@@ -1,0 +1,27 @@
+{
+  "name": "boiler-server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "babel-node index.js",
+    "test": "echo \"No tests yet\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/georgegillams/boiler-server.git"
+  },
+  "author": "@georgegillams",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/georgegillams/boiler-server/issues"
+  },
+  "homepage": "https://github.com/georgegillams/boiler-server#readme",
+  "devDependencies": {
+    "@babel/core": "^7.20.7",
+    "@babel/node": "^7.20.7"
+  },
+  "dependencies": {
+    "rpio": "^2.4.2"
+  }
+}
