@@ -1,5 +1,8 @@
 const http = require("http");
 let rpio;
+
+const restartOnceMode = process.argv.includes("--restart-once");
+
 if (process.env.DEBUG) {
   rpio = class {
     constructor() {
@@ -32,19 +35,29 @@ const waitFor = async (ms) => {
   return new Promise((resolve) => setTimeout(resolve, ms));
 };
 
-const requestListener = async (req, res) => {
+const restartBoiler = async () => {
   await pressButton();
   await waitFor(10000);
   await pressButton();
   await waitFor(10000);
 
   console.log("Boiler restart complete!");
+};
+
+const requestListener = async (req, res) => {
+  await restartBoiler();
 
   res.writeHead(200);
   res.end("Boiler restart complete!");
 };
 
-const server = http.createServer();
-server.on("request", requestListener);
+if (restartOnceMode) {
+  restartBoiler();
+}
 
-server.listen(process.env.PORT || 8080);
+if (!restartOnceMode) {
+  const server = http.createServer();
+  server.on("request", requestListener);
+
+  server.listen(process.env.PORT || 8080);
+}
