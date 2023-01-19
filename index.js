@@ -1,7 +1,10 @@
+const fs = require("fs");
 const http = require("http");
 let rpio;
 
 const restartOnceMode = process.argv.includes("--restart-once");
+
+const RESTART_LOG_FILE = "restart_log.txt";
 
 if (process.env.DEBUG) {
   rpio = class {
@@ -36,12 +39,20 @@ const waitFor = async (ms) => {
 };
 
 const restartBoiler = async () => {
+  fs.appendFileSync(
+    RESTART_LOG_FILE,
+    `${new Date().toISOString()} RESTARTING\n`
+  );
   await pressButton();
   await waitFor(10000);
   await pressButton();
   await waitFor(10000);
 
   console.log("Boiler restart complete!");
+  fs.appendFileSync(
+    RESTART_LOG_FILE,
+    `${new Date().toISOString()} RESTART COMPLETE\n`
+  );
 };
 
 const requestListener = async (req, res) => {
@@ -52,6 +63,10 @@ const requestListener = async (req, res) => {
 };
 
 if (restartOnceMode) {
+  fs.appendFileSync(
+    RESTART_LOG_FILE,
+    `${new Date().toISOString()} RUNNING RESTART ONCE MODE\n`
+  );
   restartBoiler();
 }
 
@@ -60,4 +75,9 @@ if (!restartOnceMode) {
   server.on("request", requestListener);
 
   server.listen(process.env.PORT || 8080);
+
+  fs.appendFileSync(
+    RESTART_LOG_FILE,
+    `${new Date().toISOString()} SERVER RUNNING\n`
+  );
 }
