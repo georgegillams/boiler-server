@@ -56,10 +56,18 @@ const restartBoiler = async () => {
 };
 
 const requestListener = async (req, res) => {
-  await restartBoiler();
-
-  res.writeHead(200);
-  res.end("Boiler restart complete!");
+  if (req.url == "/restart") {
+    await restartBoiler();
+    res.writeHead(200);
+    res.end("Boiler restart complete!");
+  } else if (req.url === "/logs") {
+    const logs = fs.readFileSync(RESTART_LOG_FILE, { encoding: "utf-8" });
+    res.writeHead(200);
+    res.end(logs);
+  } else {
+    res.writeHead(404);
+    res.end("Not found");
+  }
 };
 
 if (restartOnceMode) {
