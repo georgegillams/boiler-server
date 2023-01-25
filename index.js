@@ -4,7 +4,7 @@ let rpio;
 
 const restartOnceMode = process.argv.includes("--restart-once");
 
-const RESTART_LOG_FILE = "restart_log.txt";
+const RESTART_LOG_FILE = "../restart_log.txt";
 
 if (process.env.DEBUG) {
   rpio = class {
