@@ -5,6 +5,8 @@ let rpio;
 const restartOnceMode = process.argv.includes("--restart-once");
 
 const RESTART_LOG_FILE = "../restart_log.txt";
+const TIME_BETWEEN_RESTARTS = 1000 * 30; // 30 seconds
+let lastRestartTime = 0;
 
 if (process.env.DEBUG) {
   rpio = class {
@@ -57,6 +59,12 @@ const restartBoiler = async () => {
 
 const requestListener = async (req, res) => {
   if (req.url == "/restart") {
+    if (lastRestartTime > Date.now() - TIME_BETWEEN_RESTARTS) {
+      res.writeHead(400);
+      res.end("Boiler is already restarting!");
+      return;
+    }
+    lastRestartTime = Date.now();
     await restartBoiler();
     res.writeHead(200);
     res.end("Boiler restart complete!");
