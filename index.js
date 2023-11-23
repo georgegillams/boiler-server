@@ -2,10 +2,10 @@ const fs = require("fs");
 const http = require("http");
 let rpio;
 
-const restartOnceMode = process.argv.includes("--restart-once");
+const restartThenQuit = process.argv.includes("--restart-once");
 
 const RESTART_LOG_FILE = "../restart_log.txt";
-const TIME_BETWEEN_RESTARTS = 1000 * 30; // 30 seconds
+const MIN_TIME_BETWEEN_ACTIONS = 1000 * 30; // 30 seconds
 let lastRestartTime = 0;
 
 if (process.env.DEBUG) {
@@ -57,17 +57,34 @@ const restartBoiler = async () => {
   );
 };
 
+const toggleBoilerState = async () => {
+  fs.appendFileSync(RESTART_LOG_FILE, `${new Date().toISOString()} TOGGLING\n`);
+  await pressButton();
+
+  console.log("Boiler toggle complete!");
+  fs.appendFileSync(
+    RESTART_LOG_FILE,
+    `${new Date().toISOString()} TOGGLE COMPLETE\n`
+  );
+};
+
 const requestListener = async (req, res) => {
-  if (req.url == "/restart") {
-    if (lastRestartTime > Date.now() - TIME_BETWEEN_RESTARTS) {
+  if (req.url == "/restart" || req.url == "/toggle") {
+    if (lastRestartTime > Date.now() - MIN_TIME_BETWEEN_ACTIONS) {
       res.writeHead(400);
-      res.end("Boiler is already restarting!");
+      res.end("Too many requests! Try again later!");
       return;
     }
     lastRestartTime = Date.now();
-    await restartBoiler();
-    res.writeHead(200);
-    res.end("Boiler restart complete!");
+    if (req.url == "/restart") {
+      await restartBoiler();
+      res.writeHead(200);
+      res.end("Boiler restart complete!");
+    } else if (req.url === "/toggle") {
+      await toggleBoilerState();
+      res.writeHead(200);
+      res.end("Boiler toggle complete!");
+    }
   } else if (req.url === "/logs") {
     const logs = fs.readFileSync(RESTART_LOG_FILE, { encoding: "utf-8" });
     res.writeHead(200);
@@ -78,7 +95,7 @@ const requestListener = async (req, res) => {
   }
 };
 
-if (restartOnceMode) {
+if (restartThenQuit) {
   fs.appendFileSync(
     RESTART_LOG_FILE,
     `${new Date().toISOString()} RUNNING RESTART ONCE MODE\n`
@@ -86,7 +103,7 @@ if (restartOnceMode) {
   restartBoiler();
 }
 
-if (!restartOnceMode) {
+if (!restartThenQuit) {
   const server = http.createServer();
   server.on("request", requestListener);
 
