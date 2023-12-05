@@ -1,5 +1,6 @@
 const fs = require("fs");
 const http = require("http");
+const { logsToHtml } = require("./utils");
 let rpio;
 
 const restartThenQuit = process.argv.includes("--restart-once");
@@ -85,10 +86,14 @@ const requestListener = async (req, res) => {
       res.writeHead(200);
       res.end("Boiler toggle complete!");
     }
+  } else if (req.url === "/logs-raw") {
+    const logs = fs.readFileSync(RESTART_LOG_FILE, { encoding: "utf-8" });
+    res.writeHead(200);
+    res.end(logsToHtml(logs));
   } else if (req.url === "/logs") {
     const logs = fs.readFileSync(RESTART_LOG_FILE, { encoding: "utf-8" });
     res.writeHead(200);
-    res.end(logs);
+    res.end(logsToHtml(logs));
   } else {
     res.writeHead(404);
     res.end("Not found");
