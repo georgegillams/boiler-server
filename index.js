@@ -25,15 +25,23 @@ if (process.env.DEBUG) {
 }
 
 const PIN = 12;
-const PRESS_IN_POSITION = 1100;
 const DEFAULT_POSITION = 1500;
+const PRESS_IN_POSITION = 1000; // was 1100. Smaller number means more pressed in...
 
 const servo = new rpio(PIN, { mode: rpio.OUTPUT });
+
+const readFile = (fileName) => {
+  if (!fs.existsSync(fileName)) {
+    fs.writeFileSync(fileName, "");
+  }
+
+  return fs.readFileSync(fileName, { encoding: "utf-8" });
+};
 
 const pressButton = async () => {
   console.log(`Pressing boiler button`);
   await servo.servoWrite(PRESS_IN_POSITION);
-  await waitFor(1000);
+  await waitFor(800);
   await servo.servoWrite(DEFAULT_POSITION);
 };
 
@@ -47,9 +55,9 @@ const restartBoiler = async () => {
     `${new Date().toISOString()} RESTARTING\n`
   );
   await pressButton();
-  await waitFor(10000);
+  await waitFor(8000);
   await pressButton();
-  await waitFor(10000);
+  await waitFor(8000);
 
   console.log("Boiler restart complete!");
   fs.appendFileSync(
@@ -87,11 +95,11 @@ const requestListener = async (req, res) => {
       res.end("Boiler toggle complete!");
     }
   } else if (req.url === "/logs-raw") {
-    const logs = fs.readFileSync(RESTART_LOG_FILE, { encoding: "utf-8" });
+    const logs = readFile(RESTART_LOG_FILE, { encoding: "utf-8" });
     res.writeHead(200);
     res.end(logsToHtml(logs));
   } else if (req.url === "/logs") {
-    const logs = fs.readFileSync(RESTART_LOG_FILE, { encoding: "utf-8" });
+    const logs = readFile(RESTART_LOG_FILE, { encoding: "utf-8" });
     res.writeHead(200);
     res.end(logsToHtml(logs));
   } else {
