@@ -6,8 +6,11 @@ let rpio;
 const restartThenQuit = process.argv.includes("--restart-once");
 
 const RESTART_LOG_FILE = "../restart_log.txt";
-const MIN_TIME_BETWEEN_ACTIONS = 1000 * 30; // 30 seconds
-let lastRestartTime = 0;
+const MIN_TIME_BETWEEN_TOGGLES = 1000 * 3; // 3 seconds
+const MIN_TIME_BETWEEN_RESTARTS = 1000 * 30; // 30 seconds
+let lastActionTime = 0;
+let currentlyRestarting = false;
+let currentlyToggling = false;
 
 if (process.env.DEBUG) {
   rpio = class {
@@ -50,6 +53,7 @@ const waitFor = async (ms) => {
 };
 
 const restartBoiler = async () => {
+  currentlyRestarting = true;
   fs.appendFileSync(
     RESTART_LOG_FILE,
     `${new Date().toISOString()} RESTARTING\n`
@@ -59,6 +63,7 @@ const restartBoiler = async () => {
   await pressButton();
   await waitFor(8000);
 
+  currentlyRestarting = false;
   console.log("Boiler restart complete!");
   fs.appendFileSync(
     RESTART_LOG_FILE,
@@ -67,6 +72,7 @@ const restartBoiler = async () => {
 };
 
 const toggleBoilerState = async () => {
+  currentlyToggling = true;
   fs.appendFileSync(RESTART_LOG_FILE, `${new Date().toISOString()} TOGGLING\n`);
   await pressButton();
 
@@ -75,25 +81,40 @@ const toggleBoilerState = async () => {
     RESTART_LOG_FILE,
     `${new Date().toISOString()} TOGGLE COMPLETE\n`
   );
+  currentlyToggling = false;
 };
 
 const requestListener = async (req, res) => {
-  if (req.url == "/restart" || req.url == "/toggle") {
-    if (lastRestartTime > Date.now() - MIN_TIME_BETWEEN_ACTIONS) {
+  if (req.url == "/restart") {
+    if (currentlyRestarting || currentlyToggling) {
+      res.writeHead(400);
+      res.end("Action already in progress, try again later!");
+      return;
+    }
+    if (lastActionTime > Date.now() - MIN_TIME_BETWEEN_RESTARTS) {
       res.writeHead(400);
       res.end("Too many requests! Try again later!");
       return;
     }
-    lastRestartTime = Date.now();
-    if (req.url == "/restart") {
-      await restartBoiler();
-      res.writeHead(200);
-      res.end("Boiler restart complete!");
-    } else if (req.url === "/toggle") {
-      await toggleBoilerState();
-      res.writeHead(200);
-      res.end("Boiler toggle complete!");
+    lastActionTime = Date.now();
+    await restartBoiler();
+    res.writeHead(200);
+    res.end("Boiler restart complete!");
+  } else if (req.url === "/toggle") {
+    if (currentlyRestarting || currentlyToggling) {
+      res.writeHead(400);
+      res.end("Action already in progress, try again later!");
+      return;
     }
+    if (lastActionTime > Date.now() - MIN_TIME_BETWEEN_TOGGLES) {
+      res.writeHead(400);
+      res.end("Too many requests! Try again later!");
+      return;
+    }
+    lastActionTime = Date.now();
+    await toggleBoilerState();
+    res.writeHead(200);
+    res.end("Boiler toggle complete!");
   } else if (req.url === "/logs-raw") {
     const logs = readFile(RESTART_LOG_FILE, { encoding: "utf-8" });
     res.writeHead(200);
