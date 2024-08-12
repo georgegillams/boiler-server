@@ -12,7 +12,7 @@ let lastActionTime = 0;
 let currentlyRestarting = false;
 let currentlyToggling = false;
 
-if (process.env.DEBUG) {
+if (process.env.DEBUG || !process.env.USE_RPIO) {
   rpio = class {
     constructor() {
       console.log("Gpio created");
@@ -85,6 +85,14 @@ const toggleBoilerState = async () => {
 };
 
 const requestListener = async (req, res) => {
+  if (req.url == "/log-restart") {
+    fs.appendFileSync(
+      RESTART_LOG_FILE,
+      `${new Date().toISOString()} RESTART PERFORMED BY EXTERNAL MECHANISM\n`
+    );
+    res.end("Restart logged successfully!");
+    return;
+  }
   if (req.url == "/restart") {
     if (currentlyRestarting || currentlyToggling) {
       res.writeHead(400);
@@ -118,7 +126,7 @@ const requestListener = async (req, res) => {
   } else if (req.url === "/logs-raw") {
     const logs = readFile(RESTART_LOG_FILE, { encoding: "utf-8" });
     res.writeHead(200);
-    res.end(logsToHtml(logs));
+    res.end(logs);
   } else if (req.url === "/logs") {
     const logs = readFile(RESTART_LOG_FILE, { encoding: "utf-8" });
     res.writeHead(200);
